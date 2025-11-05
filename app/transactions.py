@@ -2,7 +2,6 @@
 from fastapi import APIRouter, HTTPException, Path
 from pydantic import BaseModel
 from typing import Optional
-from datetime import datetime
 
 router = APIRouter()
 
@@ -18,7 +17,7 @@ class TransactionResponse(BaseModel):
     processed_at: Optional[str]
     updated_at: str
 
-# Mock database - replace with actual database in production
+# Mock database
 transactions_db = {
     "txn_123": {
         "transaction_id": "txn_123",
@@ -53,17 +52,17 @@ async def get_transaction(
             )
 
         # Convert amount back from cents to main unit
-        response_data = {
-            "transaction_id": transaction["transaction_id"],
-            "source_account": transaction["source_account"],
-            "destination_account": transaction["destination_account"],
-            "amount": transaction["amount"] / 100,  # Convert back from cents
-            "currency": transaction["currency"],
-            "status": transaction["status"],
-            "created_at": transaction["created_at"],
-            "processed_at": transaction["processed_at"],
-            "updated_at": transaction["updated_at"]
-        }
+        response_data = TransactionResponse(
+            transaction_id=transaction["transaction_id"],
+            source_account=transaction["source_account"],
+            destination_account=transaction["destination_account"],
+            amount=transaction["amount"] / 100,  # Convert back from cents
+            currency=transaction["currency"],
+            status=transaction["status"],
+            created_at=transaction["created_at"],
+            processed_at=transaction["processed_at"],
+            updated_at=transaction["updated_at"]
+        )
 
         return response_data
 

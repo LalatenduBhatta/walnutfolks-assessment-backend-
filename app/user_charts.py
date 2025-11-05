@@ -2,7 +2,7 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, EmailStr, validator
 from typing import Optional, Dict, Any
-import asyncio
+import re
 
 router = APIRouter()
 
@@ -12,9 +12,15 @@ class ChartData(BaseModel):
     sadPath: Dict[str, Any]
 
 class UserChartRequest(BaseModel):
-    email: EmailStr
+    email: str
     chartData: Optional[ChartData] = None
     action: str
+
+    @validator('email')
+    def validate_email(cls, v):
+        if not v or '@' not in v:
+            raise ValueError('Invalid email format')
+        return v.lower().strip()
 
     @validator('action')
     def validate_action(cls, v):
@@ -22,9 +28,9 @@ class UserChartRequest(BaseModel):
             raise ValueError('Action must be "save" or "get"')
         return v
 
-    @validator('chartData')
+    @validator('chartData', always=True)
     def validate_chart_data(cls, v, values):
-        if values.get('action') == 'save' and v is None:
+        if 'action' in values and values['action'] == 'save' and v is None:
             raise ValueError('Chart data is required for save action')
         return v
 
@@ -34,14 +40,13 @@ class UserChartResponse(BaseModel):
     chartData: Optional[Dict[str, Any]] = None
     lastUpdated: Optional[str] = None
 
-# In a real application, you'd use a proper database
-# For now, using an in-memory dictionary as a mock
+# In-memory store for tracking processing transactions (for idempotency)
 user_charts_db = {}
 
 @router.post("/user-charts", response_model=UserChartResponse)
 async def handle_user_charts(request: UserChartRequest):
     try:
-        email = request.email.lower().strip()
+        email = request.email
 
         if request.action == 'save':
             if not request.chartData:
@@ -60,28 +65,28 @@ async def handle_user_charts(request: UserChartRequest):
             # Save or update chart data (mock database operation)
             user_charts_db[email] = {
                 'chart_data': request.chartData.dict(),
-                'updated_at': '2024-01-01T00:00:00Z'  # Use datetime.utcnow().isoformat() in production
+                'updated_at': '2024-01-01T00:00:00Z'
             }
 
-            return {
-                "success": True,
-                "message": "Chart data saved successfully"
-            }
+            return UserChartResponse(
+                success=True,
+                message="Chart data saved successfully"
+            )
 
         elif request.action == 'get':
             # Get existing chart data
             user_data = user_charts_db.get(email)
             
             if user_data:
-                return {
-                    "chartData": user_data['chart_data'],
-                    "lastUpdated": user_data['updated_at']
-                }
+                return UserChartResponse(
+                    chartData=user_data['chart_data'],
+                    lastUpdated=user_data['updated_at']
+                )
             else:
-                return {
-                    "chartData": None,
-                    "lastUpdated": None
-                }
+                return UserChartResponse(
+                    chartData=None,
+                    lastUpdated=None
+                )
 
     except HTTPException:
         raise

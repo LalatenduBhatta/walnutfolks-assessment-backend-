@@ -38,7 +38,7 @@ async def root():
 async def health_check():
     return {
         "status": "HEALTHY",
-        "current_time": "2024-01-01T00:00:00Z",  # You might want to use datetime.utcnow().isoformat()
+        "current_time": "2024-01-01T00:00:00Z",
         "service": "WalnutFolks Transaction Service",
         "version": "1.0.0"
     }

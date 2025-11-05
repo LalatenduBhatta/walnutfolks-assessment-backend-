@@ -26,10 +26,10 @@ class WebhookResponse(BaseModel):
     transaction_id: str
     status: str
 
-# In-memory store for tracking processing transactions (for idempotency)
+# In-memory store for tracking processing transactions
 processing_transactions = set()
 
-# Mock database - replace with actual database in production
+# Mock database
 transactions_db = {}
 
 async def process_transaction_in_background(transaction_id: str):
@@ -60,7 +60,7 @@ async def process_transaction_in_background(transaction_id: str):
         # Update transaction with error status
         if transaction_id in transactions_db:
             transactions_db[transaction_id].update({
-                "status": "PROCESSING",  # Keep as processing for retry
+                "status": "PROCESSING",
                 "updated_at": datetime.utcnow().isoformat() + "Z"
             })
             
@@ -79,12 +79,9 @@ async def handle_transaction_webhook(
     try:
         print(f'Received webhook: {request.dict()}')
         
-        # Validate required fields are already handled by Pydantic
-
         # Check if already processing (in-memory check for immediate duplicates)
         if request.transaction_id in processing_transactions:
             print(f'Transaction {request.transaction_id} is already being processed')
-            # Return empty response with 202 status
             from fastapi.responses import Response
             return Response(status_code=202)
 
@@ -93,7 +90,6 @@ async def handle_transaction_webhook(
         
         if existing_transaction:
             print(f'Transaction {request.transaction_id} already exists with status: {existing_transaction["status"]}')
-            # Return empty response with 202 status
             from fastapi.responses import Response
             return Response(status_code=202)
 
@@ -124,11 +120,11 @@ async def handle_transaction_webhook(
         print(f'Webhook processed in {processing_time}ms')
 
         # Return 202 Accepted as required
-        return {
-            "acknowledged": True,
-            "transaction_id": request.transaction_id,
-            "status": "processing"
-        }
+        return WebhookResponse(
+            acknowledged=True,
+            transaction_id=request.transaction_id,
+            status="processing"
+        )
 
     except Exception as error:
         print(f'Webhook processing error: {error}')
